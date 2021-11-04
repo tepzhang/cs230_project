@@ -114,3 +114,5 @@ ENV/
 # vim
 *.swp
 *.pdf
+checkpoints/
+wandb/
