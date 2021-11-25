@@ -1,9 +1,11 @@
 import torch
 from .base_model import BaseModel
 from . import networks
+import os
 
 
-class Pix2PixModel_for_emotion(BaseModel):
+# class Pix2PixAdaptedForEmotionModel(BaseModel):
+class pix2pixadaptedforemotionmodel(BaseModel):
     """ This class implements an adapted pix2pix model for learning a mapping from input images to output images and matching emotional attributes (valence and arousal).
 
     The model training requires '--dataset_mode aligned' dataset.
@@ -32,8 +34,10 @@ class Pix2PixModel_for_emotion(BaseModel):
         parser.set_defaults(norm='batch', netG='unet_256', dataset_mode='aligned')
         if is_train:
             parser.set_defaults(pool_size=0, gan_mode='vanilla')
-            parser.add_argument('--lambda_L1', type=float, default=100.0, help='weight for L1 loss')
-            parser.add_argument('--lambda_emo', type=float, default=100.0, help='weight for emotion loss')
+            parser.add_argument('--lambda_L1', type=float, default=10.0, help='weight for L1 loss')
+            ### try different lambda_emo here ###
+            parser.add_argument('--lambda_emo', type=float, default=10.0, help='weight for emotion loss')
+            parser.add_argument('--save_epoch_freq', type=int, default=100, help='frequency of saving checkpoints at the end of epochs')
 
         return parser
 
@@ -61,7 +65,10 @@ class Pix2PixModel_for_emotion(BaseModel):
             self.netD = networks.define_D(opt.input_nc + opt.output_nc, opt.ndf, opt.netD,
                                           opt.n_layers_D, opt.norm, opt.init_type, opt.init_gain, self.gpu_ids)
             # load the pre-trained emotion discriminator and fix its parameters
-            self.netD_emo = torch.load('../../D_emotion.pt')
+            # # Get the current working directory
+            # cwd = os.getcwd()
+            # print("Current working directory: {0}".format(cwd))
+            self.netD_emo = torch.load('/content/drive/MyDrive/cs230_project_all/cs230_project/D_emotion.pt')
             for param in self.netD_emo.parameters():
                 param.requires_grad = False
 
@@ -69,7 +76,7 @@ class Pix2PixModel_for_emotion(BaseModel):
             # define loss functions
             self.criterionGAN = networks.GANLoss(opt.gan_mode).to(self.device)
             self.criterionL1 = torch.nn.L1Loss()
-            self.criterior_D_emo = torch.nn.MSELoss()
+            self.criterion_D_emo = torch.nn.MSELoss()
             # initialize optimizers; schedulers will be automatically created by function <BaseModel.setup>.
             self.optimizer_G = torch.optim.Adam(self.netG.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999))
             self.optimizer_D = torch.optim.Adam(self.netD.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999))
