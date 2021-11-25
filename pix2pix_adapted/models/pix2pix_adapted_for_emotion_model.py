@@ -33,6 +33,7 @@ class Pix2PixModel_for_emotion(BaseModel):
         if is_train:
             parser.set_defaults(pool_size=0, gan_mode='vanilla')
             parser.add_argument('--lambda_L1', type=float, default=100.0, help='weight for L1 loss')
+            parser.add_argument('--lambda_emo', type=float, default=100.0, help='weight for emotion loss')
 
         return parser
 
