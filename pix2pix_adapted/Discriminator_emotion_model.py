@@ -1,33 +1,20 @@
-"""
-Shows a small example of how to load a pretrain model (VGG16) from PyTorch,
-and modifies this to train on the CIFAR10 dataset. The same method generalizes
-well to other datasets, but the modifications to the network may need to be changed.
-Video explanation: https://youtu.be/U4bHxEhMGNk
-Got any questions leave a comment on youtube :)
-Programmed by Aladdin Persson <aladdin.persson at hotmail dot com>
-*    2020-04-08 Initial coding
-"""
-
 # Imports
+import numpy as np
+import pandas as pd
+from PIL import Image
 import torch
 import torchvision
 import torch.nn as nn  # All neural network modules, nn.Linear, nn.Conv2d, BatchNorm, Loss functions
 import torch.optim as optim  # For all Optimization algorithms, SGD, Adam, etc.
 import torch.nn.functional as F  # All functions that don't have any parameters
-from torch.utils.data import (
-    DataLoader,
-)  # Gives easier dataset managment and creates mini batches
+from torch.utils.data import Dataset, DataLoader
 import torchvision.datasets as datasets  # Has standard datasets we can import in a nice way
 import torchvision.transforms as transforms  # Transformations we can perform on our dataset
 
 # Set device
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-# Hyperparameters
-num_classes = 10
-learning_rate = 1e-3
-batch_size = 1024
-num_epochs = 5
+# load pre-trained model
 
 # Simple Identity class that let's input pass without changes
 class Identity(nn.Module):
@@ -37,31 +24,69 @@ class Identity(nn.Module):
     def forward(self, x):
         return x
 
+# # Load pretrain model & modify it
+# model = torchvision.models.resnet18(pretrained=True)
 
-# Load pretrain model & modify it
-model = torchvision.models.vgg16(pretrained=True)
+# # If you want to do finetuning then set requires_grad = False
+# # Remove these two lines if you want to train entire model,
+# # and only want to load the pretrain weights.
+# for param in model.parameters():
+#     param.requires_grad = False
 
-# If you want to do finetuning then set requires_grad = False
-# Remove these two lines if you want to train entire model,
-# and only want to load the pretrain weights.
-for param in model.parameters():
-    param.requires_grad = False
 
-model.avgpool = Identity()
-model.classifier = nn.Sequential(
-    nn.Linear(512, 100), nn.ReLU(), nn.Linear(100, num_classes)
-)
+# model.fc = nn.Sequential(
+#     nn.Linear(512, 128), nn.ReLU(), nn.Linear(128, 32), nn.ReLU(), nn.Linear(32, 2)
+# )
+
+model = torch.load('/content/drive/MyDrive/cs230_project_all/cs230_project/D_emotion.pt')
+model.eval()
+
 model.to(device)
 
 
+# dataset class
+class OASIS_dataset(Dataset):
+
+    def __init__(self):
+        # Initialize data, download, etc.
+        # read with numpy or pandas
+        # y: valence and arousal ratings
+        xy = pd.read_csv('/content/drive/MyDrive/cs230_project_all/cs230_project/data/OASIS/OASIS_for_modeling.csv')
+        # print(xy.head())
+        self.n_samples = xy.shape[0]
+        self.y_data = torch.tensor(xy[['Valence_mean', 'Arousal_mean']].values, dtype=torch.float32)
+        # x: the corresponding picture
+        self.x_name = xy['Theme']
+
+    # support indexing such that dataset[i] can be used to get i-th sample
+    def __getitem__(self, index):        
+        # print(self.x_name[index])
+        self.x_path = '/content/drive/MyDrive/cs230_project_all/cs230_project/data/OASIS/images/' + self.x_name[index] + '.jpg'
+        self.x_img = Image.open(self.x_path).convert('RGB')
+        transformations = transforms.Compose([
+            transforms.Resize(255),
+            transforms.CenterCrop(224),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=(0.5,0.5,0.5), std=(0.5,0.5,0.5))
+        ])
+        return transformations(self.x_img), self.y_data[index]
+
+    # we can call len(dataset) to return the size
+    def __len__(self):
+        return self.n_samples
+
+
+# Hyperparameters
+learning_rate = 1e-2
+batch_size = 256
+num_epochs = 20
+
 # Load Data
-train_dataset = datasets.CIFAR10(
-    root="dataset/", train=True, transform=transforms.ToTensor(), download=True
-)
+train_dataset = OASIS_dataset()
 train_loader = DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=True)
 
 # Loss and optimizer
-criterion = nn.CrossEntropyLoss()
+criterion = nn.MSELoss()
 optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
 # Train Network
@@ -69,6 +94,7 @@ for epoch in range(num_epochs):
     losses = []
 
     for batch_idx, (data, targets) in enumerate(train_loader):
+        # print("epoch:", epoch, "; batch", batch_idx)
         # Get data to cuda if possible
         data = data.to(device=device)
         targets = targets.to(device=device)
@@ -87,34 +113,5 @@ for epoch in range(num_epochs):
 
     print(f"Cost at epoch {epoch} is {sum(losses)/len(losses):.5f}")
 
-# Check accuracy on training & test to see how good our model
-
-
-def check_accuracy(loader, model):
-    if loader.dataset.train:
-        print("Checking accuracy on training data")
-    else:
-        print("Checking accuracy on test data")
-
-    num_correct = 0
-    num_samples = 0
-    model.eval()
-
-    with torch.no_grad():
-        for x, y in loader:
-            x = x.to(device=device)
-            y = y.to(device=device)
-
-            scores = model(x)
-            _, predictions = scores.max(1)
-            num_correct += (predictions == y).sum()
-            num_samples += predictions.size(0)
-
-        print(
-            f"Got {num_correct} / {num_samples} with accuracy {float(num_correct)/float(num_samples)*100:.2f}"
-        )
-
-    model.train()
-
-
-check_accuracy(train_loader, model)
+# save the trained model
+torch.save(model, '/content/drive/MyDrive/cs230_project_all/cs230_project/D_emotion.pt')
