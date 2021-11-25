@@ -40,7 +40,6 @@ class Identity(nn.Module):
 
 model = torch.load('/content/drive/MyDrive/cs230_project_all/cs230_project/D_emotion.pt')
 model.eval()
-
 model.to(device)
 
 
@@ -79,7 +78,7 @@ class OASIS_dataset(Dataset):
 # Hyperparameters
 learning_rate = 1e-2
 batch_size = 256
-num_epochs = 20
+num_epochs = 200
 
 # Load Data
 train_dataset = OASIS_dataset()
@@ -88,6 +87,7 @@ train_loader = DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=
 # Loss and optimizer
 criterion = nn.MSELoss()
 optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[120, 170], gamma=0.5)
 
 # Train Network
 for epoch in range(num_epochs):
@@ -110,7 +110,8 @@ for epoch in range(num_epochs):
 
         # gradient descent or adam step
         optimizer.step()
-
+    
+    scheduler.step()
     print(f"Cost at epoch {epoch} is {sum(losses)/len(losses):.5f}")
 
 # save the trained model
