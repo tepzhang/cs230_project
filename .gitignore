@@ -114,3 +114,4 @@ ENV/
 *.pdf
 checkpoints/
 wandb/
+latest_model_saved/*.pth
