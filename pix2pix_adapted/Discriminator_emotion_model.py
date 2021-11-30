@@ -50,7 +50,7 @@ class OASIS_dataset(Dataset):
         # Initialize data, download, etc.
         # read with numpy or pandas
         # y: valence and arousal ratings
-        xy = pd.read_csv('/content/drive/MyDrive/cs230_project_all/cs230_project/data/OASIS/OASIS_for_modeling.csv')
+        xy = pd.read_csv('/content/drive/MyDrive/cs230_project_all/unorganized_data/OASIS/OASIS_for_modeling.csv')
         # print(xy.head())
         self.n_samples = xy.shape[0]
         self.y_data = torch.tensor(xy[['Valence_mean', 'Arousal_mean']].values, dtype=torch.float32)
@@ -60,7 +60,7 @@ class OASIS_dataset(Dataset):
     # support indexing such that dataset[i] can be used to get i-th sample
     def __getitem__(self, index):        
         # print(self.x_name[index])
-        self.x_path = '/content/drive/MyDrive/cs230_project_all/cs230_project/data/OASIS/images/' + self.x_name[index] + '.jpg'
+        self.x_path = '/content/drive/MyDrive/cs230_project_all/unorganized_data/OASIS/images/' + self.x_name[index] + '.jpg'
         self.x_img = Image.open(self.x_path).convert('RGB')
         transformations = transforms.Compose([
             transforms.Resize(255),
