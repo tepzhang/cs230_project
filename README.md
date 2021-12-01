@@ -1,2 +1,2 @@
-# cs230_project
+# Emotion pix2pix GAN
  
